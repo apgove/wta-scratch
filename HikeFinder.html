@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <style type="text/css">
+      html { height: 100% }
+      body { height: 100%; margin: 0; padding: 0 }
+      #map-canvas { height: 100% }
+      dl.portlet {
+	background-color: #faf8f9;
+	margin-bottom: 6px;
+	border-radius: 8px 8px 0 0;
+      }
+      dl.portlet-green dt, dl.portlet-green .portletColor, dl.portlet-green-reverse .portletColor {
+	background-color: #87a738;
+      }
+      dl.portlet dt {
+	color: white;
+	font-size: 1.3em;
+	font-weight: normal;
+	margin-bottom: 18px !important;
+	position: relative;
+	border-radius: 8px 8px 0 0;
+      }
+      .tab-active {
+	color: white !important;
+      }
+      .tab-inactive {
+        color: #BBBBBB !important;
+      }
+      .tab-hidden {
+	display: none;
+      }
+      .tab {
+	border-right: 1px solid #BBBBBB;
+	cursor: pointer;
+	margin-right: 0.75em;
+	padding-right: 0.75em;
+      }
+      .left_column {
+	position: absolute;
+	width: 55%;
+      }
+      .right_column {
+	position: absolute;
+	top: 0;
+	left: 60%;
+	width: 40%;
+      }
+      .map-tooltip{
+	border:1px #eee;
+	background-color:#FFFBF0;
+	padding:2px;
+      }
+      #content ul#map-key {
+	background-color: #FAF8F9;
+	list-style-image: none;
+	list-style-type: none;
+	margin: 0;
+	padding: 0.5em;
+      }
+      ul#map-key li {
+	color: #666666;
+	display: inline;
+	margin-right: 1.5em;
+      }
+    </style>
+    <script type="text/javascript" src="http://www.wta.org/portal_javascripts/WTA%20Theme/jquery-cachekey2633.js"></script>
+    <script type="text/javascript" src="http://www.wta.org/portal_javascripts/WTA%20Theme/jquery.cookie-cachekey1552.js"></script>
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=&sensor=false"></script>
+    <script type="text/javascript" src="Search.js"></script>
+    <script type="text/javascript" src="Data.js"></script>
+    <script type="text/javascript" src="HikeFinder.js"></script>
+    <script type="text/javascript" src="MarkerTooltip.js"></script>
+    <script type="text/javascript" src="getHikesAll.js"></script>
+    <!--
+    <script type="text/javascript" src="http://www.wta.org/go-hiking/map/@@trailhead-search/getHikes?jsonp_callback=WtaTrailheadSearch.setHikes"></script>
+    -->
+  </head>
+  <body>
+    <div id="left_column" class="left_column">
+      <div class="" id="parent-fieldname-text-82bb06222e304b0cc2d6d57392b7a64f">
+	<p><span class="Apple-style-span"><b>Find your next hike! </b>Use your mouse to explore the map and click the icons for more details. Search WTA's Hiking Guide or filter results using the panel at right. <b><i>Zoom in from the statewide view to see many more results.</i> </b>The map only displays hikes with trail coordinates. Happy Hiking! <br></span></p>
+  <p><span class="boldRedText">Note:</span><span class="Apple-style-span"> Do you like this website? Please consider donating to WTA. <a class="external-link" href="https://www.gifttool.com/donations/Donate?ID=1468&amp;AID=928" target="_blank"><img src="http://www.wta.org/site_images/copy_of_donate.jpg" alt="Donate" class="image-inline" title="Donate"></a><br></span></p>
+      </div>
+      
+      <div class="visualClear"><!-- --></div>
+  
+      <div id="map_canvas" style="width: 700px; height: 500px; position: relative; background-color: rgb(229, 227, 223); overflow: hidden; -webkit-transform: translateZ(0);"></div>
+      <ul id="map-key"><li title="Hikes in the WTA Hiking Guide for which we have trailhead GPS coordinates.">
+            <img src="icon-hiker.png">
+            Hike
+        </li>
+        <li title="Zoom in from statewide view for many more suggestions.">
+            <img src="icon-hiker-featured.png">
+            Seasonal hike
+        </li>
+        <li title="Information about this hike will appear in the Details tab.">
+            <img src="icon-hiker-selected.png">
+            Selected hike
+        </li>
+    </ul>
+    </div>
+    <div id="right_column" class="right_column">
+        <dl class="portlet portletTrailheadSearch portlet-green"><dt class="portletHeader">
+                <span class="portletTopLeft"></span>
+                <span id="tab-search" class="tab tab-active">Search</span>
+                <span id="tab-details" class="tab tab-inactive">Details</span>
+                <span id="tab-results" class="tab tab-inactive">Results</span>
+                <span class="portletTopRight"></span>
+            </dt>
+
+            <dd class="portletItem odd">
+
+                <div id="tabc-details" class="tab-contents tab-hidden">Click a hike for more details.</div>
+                <div id="tabc-results" class="tab-contents tab-hidden">No search results.</div>
+                <div id="tabc-search" class="tab-contents">
+                	<div id="zoom-settings">
+                	    <div class="discreet clear-link">
+                	        [<a href="javascript:void(0)" id="clear-form" title="Click this link to start your search from scratch">start over</a>]
+                	    </div>
+                		<h4 id="zoom-label">Zoom Map By Region</h4>
+                		<a class="region-zoom" href="javascript:void(0)" lat="48.365374" lng="-120.973206" z="9">North Cascades</a><br><a class="region-zoom" href="javascript:void(0)" lat="47.958663" lng="-120.984192" z="8">Central Cascades</a><br><a class="region-zoom" href="javascript:void(0)" lat="47.430874" lng="-121.36322" z="8">Snoqualmie Pass</a><br><a class="region-zoom" href="javascript:void(0)" lat="46.103709" lng="-122.060852" z="9">South Cascades</a><br><a class="region-zoom" href="javascript:void(0)" lat="46.880846" lng="-121.640625" z="9">Mt Rainier</a><br><a class="region-zoom" href="javascript:void(0)" lat="47.776252" lng="-123.675842" z="8">Olympics</a><br><a class="region-zoom" href="javascript:void(0)" lat="48.288676" lng="-122.330017" z="9">Puget Sound &amp; Islands</a><br><a class="region-zoom" href="javascript:void(0)" lat="47.905296" lng="-118.927002" z="8">Northeast Washington</a><br><a class="region-zoom" href="javascript:void(0)" lat="46.585294" lng="-118.959961" z="8">Southeast Washington</a>
+                	</div>
+
+                    <div id="advanced-search">
+                    	<h4>Filter the Map</h4>
+               	        <div class="discreet clear-link">
+                	    [<a href="javascript:void(0)" id="clear-filters" title="Click this link to show all hikes on the map">clear filters</a>]
+                	</div>
+                    	<div id="filter-mileage" class="field-wrapper">
+                    		<label for="filter-mileage-select" class="hiddenStructure">
+                    		    Mileage Range
+                    		</label>
+                    		<select id="filter-mileage-select" class="feature-filter plain"><option value="0">Any mileage</option><option value="1">Under 3 miles</option><option value="2">3 to 8 miles</option><option value="3">8 to 12 miles</option><option value="4">Over 12 miles</option></select></div>
+                    	<div id="filter-elevation-gain" class="field-wrapper">
+                    		<label for="filter-elevationgain-select" class="hiddenStructure">
+                    		    Elevation Gain
+                    		</label>
+                    		<select id="filter-elevationgain-select" class="feature-filter plain"><option value="0">Any elevation gain</option><option value="1">Under 500 ft</option><option value="2">500-1500 ft</option><option value="3">1500-3000 ft</option><option value="4">3000+ ft</option></select></div>
+
+                    	<!-- Feature-filter checkboxes. You can rearrange and re-style at will, so long
+                    	as the checkboxes still have class="feature-filter" and feature="*". -->
+                    	<div class="field-wrapper">
+                    		<input type="checkbox" id="filt_k" class="feature-filter" feature="k"><label class="filter-label" for="filt_k">Kid-friendly</label>
+                    	</div>
+                        <!-- The map shows whether it's a coastal hike!
+                        <div class="field-wrapper">
+                            <input type="checkbox" id="filt_c" class="feature-filter" feature="c">
+                            <label class="filter-label" for="filt_c">Coasts</label>
+                        </div> -->
+                    	<div class="field-wrapper">
+                    		<input type="checkbox" id="filt_l" class="feature-filter" feature="l"><label class="filter-label" for="filt_l">Lakes</label>
+                    	</div>
+                    	<div class="field-wrapper">
+                    		<input type="checkbox" id="filt_r" class="feature-filter" feature="r"><label class="filter-label" for="filt_r">Rivers</label>
+                    	</div>
+                    	<div class="field-wrapper">
+                    		<input type="checkbox" id="filt_w" class="feature-filter" feature="w"><label class="filter-label" for="filt_w">Waterfalls</label>
+                    	</div>
+                    	<div class="field-wrapper">
+                    		<input type="checkbox" id="filt_o" class="feature-filter" feature="o"><label class="filter-label" for="filt_o">Old growth</label>
+                    	</div>
+                    	<div class="field-wrapper">
+                    		<input type="checkbox" id="ff" class="feature-filter" feature="f"><label class="filter-label" for="ff">Fall foliage</label>
+                    	</div>
+                    	<div class="field-wrapper">
+                    		<input type="checkbox" id="wm" class="feature-filter" feature="m"><label class="filter-label" for="wm">Wildflowers/Meadows</label>
+                    	</div>
+                    	<div class="field-wrapper">
+                    		<input type="checkbox" id="mv" class="feature-filter" feature="v"><label class="filter-label" for="mv">Mountain views</label>
+                    	</div>
+                    	<div class="field-wrapper">
+                    		<input type="checkbox" id="camp" class="feature-filter" feature="e"><label class="filter-label" for="camp">Established campsites</label>
+                    	</div>
+                    	<div class="field-wrapper">
+                    		<input type="checkbox" id="filt_s" class="feature-filter" feature="s"><label class="filter-label" for="filt_s">Summits</label>
+                    	</div>
+                    	<div class="field-wrapper">
+                    		<input type="checkbox" id="filt_a" class="feature-filter" feature="a"><label class="filter-label" for="filt_a">Wildlife</label>
+                    	</div>
+                    	<div class="field-wrapper">
+                    		<input type="checkbox" id="filt_p" class="feature-filter" feature="p"><label class="filter-label" for="filt_p">Ridges/Passes</label>
+                    	</div>
+                    </div>
+
+                    <div id="text-search">
+                      <h4>Search WTA's Hiking Guide</h4>
+                      <form onsubmit="return false;">
+                      <input id="search-query" type="text" name="query" class="inputLabel" title="Text Search" width="35"><input id="search-button" type="submit" class="context allowMultiSubmit" name="search" value="Search"><br><input id="search-fulltext" type="checkbox" name="fulltext"><label title="Check this box to search hike description." for="search-fulltext">Full text</label>
+                      </form>
+                    </div>
+		</div>
+	    </dd>
+	</dl>
+      </div>
+
+  </body>
+</html>
