@@ -115,6 +115,13 @@
                 <div id="tabc-details" class="tab-contents tab-hidden">Click a hike for more details.</div>
                 <div id="tabc-results" class="tab-contents tab-hidden">No search results.</div>
                 <div id="tabc-search" class="tab-contents">
+		    <div id="geocode-search">
+		      <h4>Zoom in on...</h4>
+		      <form onsubmit="return false;">
+		      <input type="text" id="geocode-text"/>
+		      <input type="submit" id="geocode-button" value="Geocode"/>
+		      </form>
+		    </div>
                 	<div id="zoom-settings">
                 	    <div class="discreet clear-link">
                 	        [<a href="javascript:void(0)" id="clear-form" title="Click this link to start your search from scratch">start over</a>]

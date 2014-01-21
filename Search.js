@@ -6,6 +6,7 @@ Search.SEARCH_NUM = 20;
 
 Search.initializeSearch = function(UI) {
   jq('#search-button').click(Search.searchButtonHandler_);
+  jq('#geocode-button').click(Search.geocodeButtonHandler_);
   // HACK!!! Pass in a proper interface of some kind.
   Search.UI = UI;
 };
@@ -54,7 +55,9 @@ Search.searchResultsHandler = function(json) {
   var results = json.data;
   var len = results.length;
   var end = Math.min(start + len, total);
-  var html = 'Results <b>' + (start+1) + ' - ' + end + '</b> of <b>' + total + '</b><p>';
+  var html = total == 0 ?
+    'No results' :
+    'Results <b>' + (start+1) + ' - ' + end + '</b> of <b>' + total + '</b><p>';
   jq('#tabc-results').html(html);
 
   var result;
@@ -293,7 +296,7 @@ Search.clearFilters = function() {
 Search.clearForm = function() {
   Search.clearFilters();
   Search.UI.selectHike(null);
-  Search.UI.setBounds(Data.allHikes);
+  Search.UI.resetBounds();
 };
 
 /**
@@ -324,4 +327,36 @@ Search.getHikeDetails = function(id, name) {
     success: function(data) { jq('#tabc-details').html(data); },
     error: function(xhr, status) { jq('#tabc-details').html(status); }
   });
+};
+
+Search.geocodeButtonHandler_ = function() {
+  var query = jq('#geocode-text').attr('value');
+  if (query) {
+    if (!Search.geocoder_) {
+      Search.geocoder_ = new google.maps.Geocoder();
+    }
+    // TODO: add bounds hint, maybe viewport hint
+    Search.geocoder_.geocode({
+      address: query,
+      bounds: Search.UI.ALLOWED_BOUNDS,
+      componentRestrictions: {
+	administrativeArea: 'WA'
+      },
+      region: 'us'
+    }, Search.geocodeQueryHandler_);
+  }
+};
+
+/**
+ * @param {Array.<google.maps.GeocoderResults>} results
+ * @param {google.maps.GeocoderStatus} status
+ */
+Search.geocodeQueryHandler_ = function(results, status) {
+  // TODO: error handling
+  if (status == google.maps.GeocoderStatus.OK && results.length > 0) {
+    var result = results[0];
+    if (result && result.geometry.viewport) {
+      Search.UI.theMap.fitBounds(result.geometry.viewport);
+    }
+  }
 };

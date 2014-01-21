@@ -11,12 +11,8 @@ var WtaTrailheadSearch = {
   expandMap: nullFunc, restoreMap: nullFunc
 };
 
-// TODO: geocode free text, some hardcoded regions
-// TODO: entry point setting particular region
-// TODO: constrain panning to washington state
-// TODO: expand/restore map (independent of DOM?)
-// TODO: hyperlink tooltip hikes
 // TODO: zoom-based clustering
+// TODO: expand/restore map (independent of DOM?)
 
 // Wrap everything else in an anonymous function to avoid name collisions.
 // BEGIN ANONYMOUS NAMESPACE
@@ -42,17 +38,6 @@ UI.initApp = function() {
   UI.initMap(document.getElementById("map_canvas"));
   UI.initMarkers(Data.allHikes);
   Search.initializeRegionZooms(UI.theMap);
-  //google.maps.event.addListener(UI.theMap, 'zoom_changed', function() {
-  //  var map = UI.theMap;
-  //  var z = map.getZoom();
-  //  var icon = z < 8 ? icon8 : z < 12 ? icon12 : icon16;
-  //  var markers = UI.allMarkers;
-  //  var n = markers.length;
-  //  for (var i=0; i<n; i++) {
-  //    var marker = markers[i];
-  //    marker.setIcon(icon);
-  //  }
-  //});
   Search.initializeTabs();
   Search.initializeFilters();
   Search.initializeSearch(UI);
@@ -63,37 +48,29 @@ google.maps.event.addDomListener(window, 'load', UI.initApp);
 
 /********************************************/
 
-// TODO: modularize, clean this up
-var hiker = 'icon-hiker.png';
-var featured = 'icon-hiker-featured.png';
-var selected = 'icon-hiker-selected.png';
-var size8 = new google.maps.Size(8, 8);
-var size12 = new google.maps.Size(12, 12);
-var size16 = new google.maps.Size(16, 16);
-var icon8 = {
-  url: hiker,
-  scaledSize: size8
+UI.IMG_NORMAL = 'icon-hiker.png';
+UI.IMG_FEATURED = 'icon-hiker-featured.png';
+UI.IMG_SELECTED = 'icon-hiker-selected.png';
+UI.SIZE8 = new google.maps.Size(8, 8);
+UI.SIZE16 = new google.maps.Size(16, 16);
+UI.ICON_NORMAL8 = {
+  url: UI.IMG_NORMAL,
+  scaledSize: UI.SIZE8
 };
-var icon12 = {
-  url: hiker,
-  scaledSize: size12
+UI.ICON_FEATURED8 = {
+  url: UI.IMG_FEATURED,
+  scaledSize: UI.SIZE8
 };
-var icon16 = {
-  url: hiker,
-  scaledSize: size16
+UI.ICON_SELECTED16 = {
+  url: UI.IMG_SELECTED,
+  scaledSize: UI.SIZE16
 };
-var featured8 = {
-  url: featured,
-  scaledSize: size8
-};
-var selected8 = {
-  url: selected,
-  scaledSize: size8
-};
-var selected16 = {
-  url: selected,
-  scaledSize: size16
-};
+
+// Washington state
+UI.ALLOWED_BOUNDS = new google.maps.LatLngBounds(
+  new google.maps.LatLng(45.5, -124.8), 
+  new google.maps.LatLng(49.2, -116.8)
+);
 
 
 UI.initMap = function(elem) {
@@ -113,12 +90,57 @@ UI.initMap = function(elem) {
   };
   google.maps.visualRefresh = true;
   UI.theMap = new google.maps.Map(elem, mapOptions);
+  
+  UI.applyUrlParameters();
+  
+  UI.addPanLimiter(UI.theMap, UI.ALLOWED_BOUNDS);
+
   UI.hoveredMarker = null;
   UI.theTooltip = new MarkerTooltip(
       UI.theMap,
       function() {return UI.hoveredMarker;},
-      function(marker) {return Data.getSummaryHtml(marker.hikes);});
+      function(marker, jqItem) {return UI.fillTooltip(marker.hikes, jqItem);});
   UI.allMarkers = [];
+};
+
+UI.applyUrlParameters = function() {
+  // Parse out latlngz=-123.4,45.6,7 to set initial viewport
+  var r = (new RegExp('[?&]latlngz=([^&#,]+),([^&#,]+),([^&#,]+)')).exec(window.location.href);
+  if (r) {
+    var lat = Number(r[1]);
+    var lng = Number(r[2]);
+    var z = Number(r[3]);
+    if (lat && lng && z) {
+      UI.theMap.setCenter(new google.maps.LatLng(lat, lng));
+      UI.theMap.setZoom(z);
+    }
+  }
+  // Parse out id=foo from URL.
+  r = (new RegExp('[?&]id=([^&#]*)')).exec(window.location.href);
+  if (r) {
+    var id = r[1];
+    var hike = Data.getHikeById(id);
+    if (hike)
+      UI.hikeClicked(hike);
+  }
+};
+
+UI.addPanLimiter = function(map, allowedBounds) {
+  // ported from http://stackoverflow.com/questions/3125065/how-do-i-limit-panning-in-google-maps-api-v3
+  var lastValidCenter = map.getCenter();
+  
+  google.maps.event.addListener(map, 'center_changed', function() {
+      if (allowedBounds.contains(map.getCenter())) {
+	  // still within valid bounds, so save the last valid position
+	  lastValidCenter = map.getCenter();
+	  return; 
+      }
+  
+      // revisit old location.
+      // TODO: convert diagonal move to horizontal/vertical when only
+      // out of bounds in one dimension.
+      map.panTo(lastValidCenter);
+  });  
 };
 
 UI.initMarkers = function(hikeList) {
@@ -131,7 +153,7 @@ UI.initMarkers = function(hikeList) {
         marker = new google.maps.Marker({
 	  position: new google.maps.LatLng(lat, lng),
 	  map: UI.theMap,
-	  icon: Data.isFeatured(hike) ? featured8 : icon8
+	  icon: Data.isFeatured(hike) ? UI.ICON_FEATURED8 : UI.ICON_NORMAL8
 	});
 	google.maps.event.addListener(marker, 'mouseover', UI.createMarkerMouseOverListener(marker));
 	google.maps.event.addListener(marker, 'click', UI.createMarkerClickListener(marker));
@@ -149,14 +171,13 @@ UI.initMarkers = function(hikeList) {
   google.maps.event.addListener(UI.theMap, 'click', function() {UI.theTooltip.hide();});
 
   UI.allMarkers = markers;
-  console.log('numDupes=' + numDupes + ', markers.length=' + markers.length);
+  // console.log('numDupes=' + numDupes + ', markers.length=' + markers.length);
 };
 
 UI.createMarkerMouseOverListener = function(marker) {
   return function(event) {
     UI.hoveredMarker = marker;
     UI.theTooltip.show();
-    // marker.setIcon(icon16);
   };
 };
 
@@ -190,6 +211,44 @@ UI.createHikeIdListener = function(hikeId) {
 };
 
 /**
+ * Fill the given jQuery element with a synopsis of a hike or list of hikes,
+ * such as for putting in a tooltip.
+ */
+UI.fillTooltip = function(hikes, jqItem) {
+  jqItem.html('');
+  if (hikes.length == 1) {
+    var hike = hikes[0];
+    var link = document.createElement('a');
+    link.setAttribute('href', 'javascript:void(0)');
+    jq(link).text(hike.name).click(UI.createHikeIdListener(hike.id));
+    jqItem.append(link);
+    if (hike.length)
+      jqItem.append('<br>Length: ' + hike.length + ' mi');
+    if (hike.elevGain)
+      jqItem.append('<br>Elevation gain: ' + hike.elevGain + ' ft');
+    if (hike.elevMax)
+      jqItem.append('<br>Peak elevation: ' + hike.elevMax + ' ft');
+    if (hike.rating && hike.rating > 0.0001)
+      jqItem.append('<br>User rating: ' + Math.round(10*hike.rating)/10);
+  } else {
+    var first = true;
+    for (var i = 0; i < hikes.length; i++) {
+      var hike = hikes[i];
+      var link = document.createElement('a');
+      link.setAttribute('href', 'javascript:void(0)');
+      jq(link).text(hike.name).click(UI.createHikeIdListener(hike.id));
+      
+      jqItem.append(first ? '' : '<br>').append(link);
+      if (hike.length) {
+        jqItem.append(' (' + hike.length + 'mi)');
+      }
+      first = false;
+      // TODO: remove event listeners?
+    }
+  }
+};
+
+/**
  * Set the viewport to minimally encompass all the hikes.
  */
 UI.setBounds = function(hikes) {
@@ -203,6 +262,10 @@ UI.setBounds = function(hikes) {
   UI.theMap.fitBounds(bounds);
 };
 
+UI.resetBounds = function() {
+  UI.setBounds(Data.allHikes);
+};
+
 UI.selectHikeById = function(id) {
   UI.selectHike(Data.getHikeById(id));
 };
@@ -212,12 +275,12 @@ UI.selectHike = function(hike) {
   if (UI.selectedMarker) {
     // HACK! Fix this, overloading hikes onto 1 marker is getting messy
     var oldHike = UI.selectedMarker.hikes[0];
-    UI.selectedMarker.setIcon(Data.isFeatured(oldHike) ? featured8 : icon8);
+    UI.selectedMarker.setIcon(Data.isFeatured(oldHike) ? UI.ICON_FEATURED8 : UI.ICON_NORMAL8);
   }
   if (hike) {
     var marker = hike.marker;
     if (marker) {
-      marker.setIcon(selected16);
+      marker.setIcon(UI.ICON_SELECTED16);
       UI.selectedMarker = marker;
       
       UI.theMap.panTo(new google.maps.LatLng(hike.lat, hike.lng));

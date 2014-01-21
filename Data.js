@@ -1,10 +1,20 @@
 var Data={};
+
 Data.allHikes=[];
 
-// Each hike is an object literal containing:
-// rating, length, features, name, lat, lng, elevGain, id, elevMax
-// NEW: kml
-// 
+/** Each hike is an object literal in the form: {{
+ * rating: number?,  // user rating 1-5, if present
+ * length: number?,  // in miles, if present
+ * features: string, // see feature-filter checkboxes in HTML page
+ * name: string,     // Human friendly name
+ * lat: number?,     // latitude, in degrees
+ * lng: number?,     // longitude, in degrees
+ * elevGain: number?,// elevation gain, in feet
+ * id: string!,      // database key
+ * elevMax: number?, // max altitude, in feet
+ * kml: string?      // URL to trail geometry KML or KMZ file
+ * }}
+*/ 
 
 Data.initData = function(hikeList) {
   Data.allHikes = hikeList;
@@ -14,7 +24,10 @@ Data.initData = function(hikeList) {
     if (dLat) return dLat;
     var dLng = b.lng - a.lng;
     if (dLng) return dLng;
-    return (Data.isFeatured(b) ? 1 : 0) - (Data.isFeatured(a) ? 1 : 0);
+    var dFeatured = (Data.isFeatured(b) ? 1 : 0) - (Data.isFeatured(a) ? 1 : 0);
+    if (dFeatured) return dFeatured;
+    var dLength = (a.length || 0) - (b.length || 0);
+    return dLength;
   });
 };
 
@@ -30,39 +43,4 @@ Data.getHikeById = function(id) {
   for (var i=0; i<Data.allHikes.length; ++i)
     if (Data.allHikes[i].id == id) return Data.allHikes[i];
   return null;
-};
-
-/**
- * Return the synopsis of a hike or list of hikes, for putting in a tooltip.
- */
-Data.getSummaryHtml = function(hikes) {
-  var html;
-  if (hikes.length == 1) {
-    var hike = hikes[0];
-    html = '<b>' + hike.name + '</b>';
-    if (hike.rating && hike.rating > 0.0001)
-      html += '<br>User rating: ' + Math.round(10*hike.rating)/10;
-    if (hike.length)
-      html += '<br>Length: ' + hike.length + ' mi';
-    if (hike.elevGain)
-      html += '<br>Elevation gain: ' + hike.elevGain + ' ft';
-    if (hike.elevMax)
-      html += '<br>Peak elevation: ' + hike.elevMax + ' ft';
-  } else {
-    var first = true;
-    html = '<b>';
-    for (var i = 0; i < hikes.length; i++) {
-      var hike = hikes[i];
-      //var link = document.createElement('a');
-      
-      html += (first ? '' : '<br>') + hike.name;
-      if (hike.length) {
-        html += ' (' + hike.length + 'mi)'
-      }
-      first = false;
-      // TODO: remove event listeners
-    }
-    html += '</b>';
-  }
-  return html;
 };

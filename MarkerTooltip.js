@@ -5,9 +5,9 @@
  * Simple tooltip positioned SE of a marker.
  * @param {google.maps.Map} map The map.
  * @param {Function(void):google.maps.Marker} getMarkerFn
- * @param {Function(google.maps.Marker):String} getInnferHtmlFn
+ * @param {Function(google.maps.Marker, jqItem):String} setContentFn
  */
-function MarkerTooltip(map, getMarkerFn, getInnerHtmlFn) {
+function MarkerTooltip(map, getMarkerFn, setContentFn) {
   var div = document.createElement('DIV');
   div.style.position = "relative";
   div.style.display = "inline-block";
@@ -18,8 +18,8 @@ function MarkerTooltip(map, getMarkerFn, getInnerHtmlFn) {
   this.div_ = div;
   /** @type Function(void):google.maps.Marker */
   this.getMarkerFn_ = getMarkerFn;
-  /** @type Function(google.maps.Marker):String */
-  this.getInnerHtmlFn_ = getInnerHtmlFn;
+  /** @type Function(google.maps.Marker, jqItem):String */
+  this.setContentFn_ = setContentFn;
   this.setMap(map);
 }
 MarkerTooltip.prototype = new google.maps.OverlayView();
@@ -36,7 +36,7 @@ MarkerTooltip.prototype.updatePosition = function() {
     var overlayProjection = this.getProjection();
     var ne = overlayProjection.fromLatLngToDivPixel(marker.getPosition());
     var div = this.div_;
-    div.style.left = (ne.x + 8) + 'px'; // adjust for blockage by mouse pointer
+    div.style.left = (ne.x + 6) + 'px'; // adjust for blockage by mouse pointer
     div.style.top = ne.y + 'px';
   }
 };
@@ -52,7 +52,7 @@ MarkerTooltip.prototype.show = function() {
   if (this.div_) {
     var marker = this.getMarkerFn_();
     if (marker) {
-      this.div_.innerHTML = this.getInnerHtmlFn_(marker);
+      this.setContentFn_(marker, jq(this.div_));
     }
     this.div_.style.visibility = "visible";
     this.updatePosition();
