@@ -144,7 +144,12 @@ UI.addPanLimiter = function(map, allowedBounds) {
 };
 
 UI.initMarkers = function(hikeList) {
-  var markers = [], marker, lastLat, lastLng, numDupes = 0;
+  UI.allMarkers = UI.createMarkersWithTolerance(hikeList, 0.2);
+  google.maps.event.addListener(UI.theMap, 'click', function() {UI.theTooltip.hide();});
+};
+
+UI.createMarkersWithNoTolerance = function(hikeList) {
+  var markers = [], marker, lastLat, lastLng;
   for (var i = 0; i < hikeList.length; ++i) {
     var hike = hikeList[i];
     var lat = hike.lat, lng = hike.lng;
@@ -162,16 +167,50 @@ UI.initMarkers = function(hikeList) {
 	lastLat = lat;
 	lastLng = lng;
       } else {
-	numDupes++;
 	marker.hikes.push(hike);
       }
+      // TODO: change hike->marker mapping to take current zoom into account.
       hike.marker = marker;
     }
   }
-  google.maps.event.addListener(UI.theMap, 'click', function() {UI.theTooltip.hide();});
+  return markers;
+};
 
-  UI.allMarkers = markers;
-  // console.log('numDupes=' + numDupes + ', markers.length=' + markers.length);
+UI.createMarkersWithTolerance = function(hikeList, tolerance) {
+  hikeList = hikeList.slice(0);  // Clone input array so we can modify it
+  var markers = [], marker, t2 = tolerance * tolerance;
+  var sqr = function(x) {return x*x;};
+  while (hikeList.length) {
+    var hike = hikeList.shift();
+    var lat = hike.lat, lng = hike.lng;
+    if (lat && lng) {
+      marker = new google.maps.Marker({
+        position: new google.maps.LatLng(lat, lng),
+	map: UI.theMap,
+        icon: Data.isFeatured(hike) ? UI.ICON_FEATURED8 : UI.ICON_NORMAL8
+      });
+      google.maps.event.addListener(marker, 'mouseover', UI.createMarkerMouseOverListener(marker));
+      google.maps.event.addListener(marker, 'click', UI.createMarkerClickListener(marker));
+      markers.push(marker);
+      marker.hikes = [hike];
+      
+      for (var i = hikeList.length - 1; i >= 0; --i) {
+	var candidate = hikeList[i];
+	var d2 = sqr(Math.abs(lat - candidate.lat)) + sqr(Math.abs(lng - candidate.lng));
+	if (d2 < t2) {
+	  marker.hikes.push(candidate);
+	  hikeList.splice(i, 1);
+	  candidate.marker = marker;
+	}
+	// TODO: use sort order to exit early when out of latitude range
+      }
+      // TODO: change icon based on singular or plural hikes
+      // TODO: change position to most central (or centroid) of the hikes
+      // TODO: change hike->marker mapping to take current zoom into account.
+      hike.marker = marker;
+    }
+  }
+  return markers;
 };
 
 UI.createMarkerMouseOverListener = function(marker) {
@@ -199,6 +238,7 @@ UI.hikeClicked = function(hike) {
 UI.createMarkerClickListener = function(marker) {
   return function(event) {
     var hike = marker.hikes[0];
+    // TODO: instead of [0], get first non-filtered hike
     UI.hikeClicked(hike);
   };
 };
@@ -311,7 +351,8 @@ UI.filterMarkers = function(filters) {
       }
       if (!hikeInvisible) {
 	// TODO: figure out how to modify tooltip when some
-        // but not all hikes are filtered
+        // but not all hikes are filtered; i.e. add filtering check when tooltip
+	// text is generated.
 	markerVisible = true;
 	break;
       }
