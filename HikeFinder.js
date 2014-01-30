@@ -144,7 +144,7 @@ UI.addPanLimiter = function(map, allowedBounds) {
 };
 
 UI.initMarkers = function(hikeList) {
-  UI.allMarkers = UI.createMarkersWithTolerance(hikeList, 0.2);
+  UI.allMarkers = UI.createMarkersWithNoTolerance(hikeList);
   google.maps.event.addListener(UI.theMap, 'click', function() {UI.theTooltip.hide();});
 };
 
@@ -232,6 +232,7 @@ UI.hikeClicked = function(hike) {
       screenOverlays: false,
       preserveViewport: true
     });
+    // TODO: need a way to get rid of kml overlay
   }  
 };
 
