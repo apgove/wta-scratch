@@ -1,7 +1,10 @@
 var Search={};
 /** @type Array.<String> */
 Search.resultHikeIds=[];
-Search.BASE_URL = 'http://www.wta.org/go-hiking/'; // Debug only
+// TODO! Change BASE_URL to '' once this is served from wta.org
+/** @const */
+Search.BASE_URL = 'http://www.wta.org/go-hiking/';
+/** @const */
 Search.SEARCH_NUM = 20;
 
 Search.initializeSearch = function(UI) {
@@ -155,6 +158,7 @@ Search.displayError = function(msg) {
 Search.clickSearchResult = function() {
   var result = this.result;
   if (result.m) {
+    // TODO: unused var??
     var hike = Data.getHikeById(result.id);
   } else {
     Search.displayError('Trailhead location not available for this hike');

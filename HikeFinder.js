@@ -43,7 +43,10 @@ UI.initApp = function() {
   Search.initializeSearch(UI);
 };
 
-// TODO: Make sure this works in situ, replace with jq
+// TODO! Getting the script load order right is tricky.  Make sure this
+// works in situ, maybe replace with the following if Google Maps API can't be
+// loaded yet but jquery can:
+// jq(document).ready(UI.initApp);
 google.maps.event.addDomListener(window, 'load', UI.initApp);
 
 /********************************************/
@@ -72,7 +75,10 @@ UI.ALLOWED_BOUNDS = new google.maps.LatLngBounds(
   new google.maps.LatLng(49.2, -116.8)
 );
 
-
+/**
+ * Create and initialize the map widget.
+ * @param {Element} elem Container div.
+ */
 UI.initMap = function(elem) {
   var mapOptions = {
     center: new google.maps.LatLng(47.857403, -120.739746),
@@ -103,6 +109,7 @@ UI.initMap = function(elem) {
   UI.allMarkers = [];
 };
 
+/** Check if the URL has any parameters that affect initialization. */
 UI.applyUrlParameters = function() {
   // Parse out latlngz=-123.4,45.6,7 to set initial viewport
   var r = (new RegExp('[?&]latlngz=([^&#,]+),([^&#,]+),([^&#,]+)')).exec(window.location.href);
@@ -125,21 +132,22 @@ UI.applyUrlParameters = function() {
   }
 };
 
+/** Prevent the map from being panned out of bounds. */
 UI.addPanLimiter = function(map, allowedBounds) {
   // ported from http://stackoverflow.com/questions/3125065/how-do-i-limit-panning-in-google-maps-api-v3
   var lastValidCenter = map.getCenter();
   
   google.maps.event.addListener(map, 'center_changed', function() {
-      if (allowedBounds.contains(map.getCenter())) {
-	  // still within valid bounds, so save the last valid position
-	  lastValidCenter = map.getCenter();
-	  return; 
-      }
-  
-      // revisit old location.
-      // TODO: convert diagonal move to horizontal/vertical when only
-      // out of bounds in one dimension.
-      map.panTo(lastValidCenter);
+    if (allowedBounds.contains(map.getCenter())) {
+      // still within valid bounds, so save the last valid position
+      lastValidCenter = map.getCenter();
+      return; 
+    }
+
+    // revisit old location.
+    // TODO: convert diagonal move to horizontal/vertical when only
+    // out of bounds in one dimension.
+    map.panTo(lastValidCenter);
   });  
 };
 
@@ -285,12 +293,14 @@ UI.fillTooltip = function(hikes, jqItem) {
       }
       first = false;
       // TODO: remove event listeners?
+      // TODO: max out at ~10 lines
     }
   }
 };
 
 /**
  * Set the viewport to minimally encompass all the hikes.
+ * @param {Array.<Object>} hikes
  */
 UI.setBounds = function(hikes) {
   if (hikes.length == 0) return;
@@ -365,6 +375,7 @@ UI.filterMarkers = function(filters) {
 // EXPORT GLOBALS
 WtaTrailheadSearch.initializeTrailheadSearch = UI.initApp;
 WtaTrailheadSearch.setHikes = Data.initData;
+// TODO: implement these
 // WtaTrailheadSearch.expandMap = expandMap;
 // WtaTrailheadSearch.restoreMap = restoreMap;
 
