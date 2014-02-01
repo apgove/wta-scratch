@@ -2,8 +2,9 @@
 <html>
   <head>
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
-    <!-- TODO! Everything in this file is identical to the existing Hike Finder,
-    except the 1st CSS rule, which is new, and the script loads, described below.
+    <!-- TODO! Almost everything in this file is identical to the old Hike Finder,
+    except the 1st CSS rule, which is new, the script loads, described below, and an
+    extra form element div.
     -->
     <style type="text/css">
       .map-tooltip{
@@ -128,11 +129,12 @@
                 <div id="tabc-details" class="tab-contents tab-hidden">Click a hike for more details.</div>
                 <div id="tabc-results" class="tab-contents tab-hidden">No search results.</div>
                 <div id="tabc-search" class="tab-contents">
+		    <!-- TODO! This div is new, relative to the old Hike Finder. -->
 		    <div id="geocode-search">
 		      <h4>Zoom in on...</h4>
 		      <form onsubmit="return false;">
-		      <input type="text" id="geocode-text"/>
-		      <input type="submit" id="geocode-button" value="Geocode"/>
+			<input type="text" id="geocode-text"/>
+			<input type="submit" id="geocode-button" value="Geocode"/>
 		      </form>
 		    </div>
                 	<div id="zoom-settings">
