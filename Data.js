@@ -1,8 +1,8 @@
 var Data={};
 
-Data.allHikes=[];
+Data.allHikes_=[];
 
-/** Each hike is an object literal in the form: {{
+/** Each hike is a JSON object literal in the form: {{
  * rating: number?,  // user rating 1-5, if present
  * length: number?,  // in miles, if present
  * features: string, // see feature-filter checkboxes in HTML page
@@ -14,12 +14,15 @@ Data.allHikes=[];
  * elevMax: number?, // max altitude, in feet
  * kml: string?      // URL to trail geometry KML or KMZ file
  * }}
-*/ 
+ *
+ * Additionally, hike objects also get extra data attached at initialization time
+ * to make it possible to map from hike -> marker.
+ */ 
 
 Data.initData = function(hikeList) {
-  Data.allHikes = hikeList;
+  Data.allHikes_ = hikeList;
     // Sort the hikes geographically, so we can detect duplicate locations more easily.
-  Data.allHikes.sort(function(a,b) {
+  Data.allHikes_.sort(function(a,b) {
     var dLat = b.lat - a.lat;
     if (dLat) return dLat;
     var dLng = b.lng - a.lng;
@@ -37,10 +40,15 @@ Data.isFeatured = function(hike) {
 
 /**
  * Given a string id for a hike, find the hike object it corresponds to.
- * TODO? change allHikes to an associative array for faster lookup.
+ * TODO: [perf] change allHikes to an associative array for faster lookup.
  */
 Data.getHikeById = function(id) {
-  for (var i=0; i<Data.allHikes.length; ++i)
-    if (Data.allHikes[i].id == id) return Data.allHikes[i];
+  for (var i=0; i<Data.allHikes_.length; ++i)
+    if (Data.allHikes_[i].id == id) return Data.allHikes_[i];
   return null;
+};
+
+/** @return {Array.<Object>} */
+Data.getAllHikes = function() {
+  return Data.allHikes_;
 };

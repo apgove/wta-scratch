@@ -11,7 +11,6 @@ var WtaTrailheadSearch = {
   expandMap: nullFunc, restoreMap: nullFunc
 };
 
-// TODO: zoom-based clustering
 // TODO: expand/restore map (independent of DOM?)
 
 // Wrap everything else in an anonymous function to avoid name collisions.
@@ -26,6 +25,10 @@ UI.theMap=null;
 UI.theTooltip=null;
 /** @type {Array.<google.maps.Marker>} */
 UI.allMarkers=[];
+/** @type {Array.<google.maps.Marker>} */
+UI.farMarkers=[];
+/** @type {number} */
+UI.currentZoom = 7;
 /** @type {google.maps.Marker} */
 UI.hoveredMarker = null;
 /** @type {google.maps.Marker} */
@@ -36,7 +39,7 @@ UI.selectedMarker = null;
 
 UI.initApp = function() {
   UI.initMap(document.getElementById("map_canvas"));
-  UI.initMarkers(Data.allHikes);
+  UI.initMarkers(Data.getAllHikes());
   Search.initializeRegionZooms(UI.theMap);
   Search.initializeTabs();
   Search.initializeFilters();
@@ -106,7 +109,6 @@ UI.initMap = function(elem) {
       UI.theMap,
       function() {return UI.hoveredMarker;},
       function(marker, jqItem) {return UI.fillTooltip(marker.hikes, jqItem);});
-  UI.allMarkers = [];
 };
 
 /** Check if the URL has any parameters that affect initialization. */
@@ -151,12 +153,40 @@ UI.addPanLimiter = function(map, allowedBounds) {
   });  
 };
 
+/** Test whether the current zoom level is considered "far" or "near". */
+UI.isFar = function() {
+  return UI.currentZoom < 8;
+};
+
+UI.onZoomChanged = function() {
+  var oldFar = UI.isFar();
+  UI.currentZoom = UI.theMap.getZoom();
+  var newFar = UI.isFar();
+  if (oldFar != newFar) {
+    // switch between visible marker sets
+    for (var i=0; i<UI.farMarkers.length; ++i) {
+      UI.farMarkers[i].setMap(oldFar ? null : UI.theMap);
+    }
+    for (var i=0; i<UI.allMarkers.length; ++i) {
+      UI.allMarkers[i].setMap(newFar ? null : UI.theMap);
+    }
+    
+    // TODO: apply filters
+    // TODO: carry over selected, hovered
+  }
+};
+
 UI.initMarkers = function(hikeList) {
-  UI.allMarkers = UI.createMarkersWithNoTolerance(hikeList);
+  UI.currentZoom = UI.theMap.getZoom();
+  google.maps.event.addListener(UI.theMap, 'zoom_changed', UI.onZoomChanged);
+
+  var isFar = UI.isFar(UI.currentZoom);
+  UI.farMarkers = UI.createMarkersWithTolerance(hikeList, 0.2, isFar);
+  UI.allMarkers = UI.createMarkersWithNoTolerance(hikeList, !isFar);
   google.maps.event.addListener(UI.theMap, 'click', function() {UI.theTooltip.hide();});
 };
 
-UI.createMarkersWithNoTolerance = function(hikeList) {
+UI.createMarkersWithNoTolerance = function(hikeList, visible) {
   var markers = [], marker, lastLat, lastLng;
   for (var i = 0; i < hikeList.length; ++i) {
     var hike = hikeList[i];
@@ -165,7 +195,7 @@ UI.createMarkersWithNoTolerance = function(hikeList) {
       if (lat != lastLat || lng != lastLng) {
         marker = new google.maps.Marker({
 	  position: new google.maps.LatLng(lat, lng),
-	  map: UI.theMap,
+	  map: visible ? UI.theMap : null,
 	  icon: Data.isFeatured(hike) ? UI.ICON_FEATURED8 : UI.ICON_NORMAL8
 	});
 	google.maps.event.addListener(marker, 'mouseover', UI.createMarkerMouseOverListener(marker));
@@ -177,14 +207,14 @@ UI.createMarkersWithNoTolerance = function(hikeList) {
       } else {
 	marker.hikes.push(hike);
       }
-      // TODO: change hike->marker mapping to take current zoom into account.
+
       hike.marker = marker;
     }
   }
   return markers;
 };
 
-UI.createMarkersWithTolerance = function(hikeList, tolerance) {
+UI.createMarkersWithTolerance = function(hikeList, tolerance, visible) {
   hikeList = hikeList.slice(0);  // Clone input array so we can modify it
   var markers = [], marker, t2 = tolerance * tolerance;
   var sqr = function(x) {return x*x;};
@@ -194,7 +224,7 @@ UI.createMarkersWithTolerance = function(hikeList, tolerance) {
     if (lat && lng) {
       marker = new google.maps.Marker({
         position: new google.maps.LatLng(lat, lng),
-	map: UI.theMap,
+	map: visible ? UI.theMap : null,
         icon: Data.isFeatured(hike) ? UI.ICON_FEATURED8 : UI.ICON_NORMAL8
       });
       google.maps.event.addListener(marker, 'mouseover', UI.createMarkerMouseOverListener(marker));
@@ -210,12 +240,12 @@ UI.createMarkersWithTolerance = function(hikeList, tolerance) {
 	  hikeList.splice(i, 1);
 	  candidate.marker = marker;
 	}
-	// TODO: use sort order to exit early when out of latitude range
+	// TODO: [perf] use sort order to exit early when out of latitude range
       }
       // TODO: change icon based on singular or plural hikes
       // TODO: change position to most central (or centroid) of the hikes
-      // TODO: change hike->marker mapping to take current zoom into account.
-      hike.marker = marker;
+
+      hike.farMarker = marker;
     }
   }
   return markers;
@@ -286,14 +316,19 @@ UI.fillTooltip = function(hikes, jqItem) {
       var link = document.createElement('a');
       link.setAttribute('href', 'javascript:void(0)');
       jq(link).text(hike.name).click(UI.createHikeIdListener(hike.id));
+      // TODO: remove event listeners?
       
       jqItem.append(first ? '' : '<br>').append(link);
       if (hike.length) {
         jqItem.append(' (' + hike.length + 'mi)');
       }
       first = false;
-      // TODO: remove event listeners?
-      // TODO: max out at ~10 lines
+
+      if (i > 10) {
+        // max out at ~10 lines
+        jqItem.append('<br>...');
+	break;
+      }
     }
   }
 };
@@ -314,7 +349,7 @@ UI.setBounds = function(hikes) {
 };
 
 UI.resetBounds = function() {
-  UI.setBounds(Data.allHikes);
+  UI.setBounds(Data.getAllHikes());
 };
 
 UI.selectHikeById = function(id) {
@@ -329,7 +364,7 @@ UI.selectHike = function(hike) {
     UI.selectedMarker.setIcon(Data.isFeatured(oldHike) ? UI.ICON_FEATURED8 : UI.ICON_NORMAL8);
   }
   if (hike) {
-    var marker = hike.marker;
+    var marker = UI.getMarkerForHike(hike);
     if (marker) {
       marker.setIcon(UI.ICON_SELECTED16);
       UI.selectedMarker = marker;
@@ -340,13 +375,26 @@ UI.selectHike = function(hike) {
 };
 
 /**
+ * @param {Object} hike
+ * @return {google.maps.marker} The marker for this hike, which may depend on zoom level, etc.
+ */
+UI.getMarkerForHike = function(hike) {
+  return UI.isFar() ? hike.farMarker : hike.marker;
+};
+
+/** @return {Array.<google.maps.marker>} */
+UI.getAllMarkers = function() {
+  return UI.isFar() ? UI.farMarkers : UI.allMarkers;
+};
+
+/**
  * @param {Array.<Function(hike):boolean>} filters A list of functions that
  * must all return true for the given hike to be visible.
  */
 UI.filterMarkers = function(filters) {
-  // for each marker in allMarkers
-  for (var i=0; i<UI.allMarkers.length; ++i) {
-    var marker = UI.allMarkers[i];
+  var allMarkers = UI.getAllMarkers();
+  for (var i=0; i<allMarkers.length; ++i) {
+    var marker = allMarkers[i];
     var markerVisible = false;
     // for each hike in marker.hikes
     for (var j=0; j<marker.hikes.length; ++j) {
