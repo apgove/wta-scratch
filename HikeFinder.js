@@ -33,6 +33,8 @@ UI.currentZoom = 7;
 UI.hoveredMarker = null;
 /** @type {google.maps.Marker} */
 UI.selectedMarker = null;
+/** @type {google.maps.KmlLayer} */
+UI.displayedKmlLayer = null;
 
 /********************************************/
 // Bootstrap initialization
@@ -261,8 +263,12 @@ UI.createMarkerMouseOverListener = function(marker) {
 UI.hikeClicked = function(hike) {
   UI.selectHike(hike);
   Search.getHikeDetails(hike.id, hike.name);
+  if (UI.displayedKmlLayer) {
+    UI.displayedKmlLayer.setMap(null);
+    UI.displayedKmlLayer = null;
+  }
   if (hike.kml) {
-    var kmlLayer = new google.maps.KmlLayer({
+    UI.displayedKmlLayer = new google.maps.KmlLayer({
       url: hike.kml,
       clickable: false,
       map: UI.theMap,
@@ -270,7 +276,6 @@ UI.hikeClicked = function(hike) {
       screenOverlays: false,
       preserveViewport: true
     });
-    // TODO: need a way to get rid of kml overlay
   }  
 };
 
