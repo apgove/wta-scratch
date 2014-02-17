@@ -74,7 +74,7 @@ UI.ICON_SELECTED16 = {
   scaledSize: UI.SIZE16
 };
 
-// Washington state
+// Washington state (set to null for no PanLimiter effect)
 UI.ALLOWED_BOUNDS = new google.maps.LatLngBounds(
   new google.maps.LatLng(45.5, -124.8), 
   new google.maps.LatLng(49.2, -116.8)
@@ -193,7 +193,7 @@ UI.initMarkers = function(hikeList) {
   google.maps.event.addListener(UI.theMap, 'zoom_changed', UI.onZoomChanged);
 
   var isFar = UI.isFar(UI.currentZoom);
-  UI.farMarkers = UI.createMarkersWithTolerance(hikeList, 0.2, isFar);
+  UI.farMarkers = UI.createMarkersWithTolerance(hikeList, 0.1, isFar);
   UI.allMarkers = UI.createMarkersWithNoTolerance(hikeList, !isFar);
   google.maps.event.addListener(UI.theMap, 'click', function() {UI.theTooltip.hide();});
 };
@@ -265,9 +265,15 @@ UI.createMarkersWithTolerance = function(hikeList, tolerance, visible) {
 
 UI.createMarkerMouseOverListener = function(marker) {
   return function(event) {
-    UI.hoveredMarker = marker;
-    UI.theTooltip.show();
+    if (!UI.theTooltip.isMouseOver()) {
+      UI.hoveredMarker = marker;
+      UI.theTooltip.show();
+    }
   };
+};
+
+UI.mouseOutListener = function(event) {
+  // TODO: set a timer to fade out the tooltip, but NOT if it's being hovered over.
 };
 
 UI.hikeClicked = function(hike) {

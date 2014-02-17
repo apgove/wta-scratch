@@ -20,6 +20,10 @@ function MarkerTooltip(map, getMarkerFn, setContentFn) {
   this.getMarkerFn_ = getMarkerFn;
   /** @type Function(google.maps.Marker, jqItem):String */
   this.setContentFn_ = setContentFn;
+  /** @type {boolean} */
+  MarkerTooltip.mouseOver_ = false;
+  google.maps.event.addDomListener(this.div_, 'mouseover', this.onMouseOver_, true);
+  google.maps.event.addDomListener(this.div_, 'mouseout', this.onMouseOut_, true);
   this.setMap(map);
 }
 MarkerTooltip.prototype = new google.maps.OverlayView();
@@ -47,6 +51,7 @@ MarkerTooltip.prototype.hide = function() {
   if (this.div_) {
     this.div_.style.visibility = "hidden";
   }
+  MarkerTooltip.mouseOver_ = false;
 };
 MarkerTooltip.prototype.show = function() {
   if (this.div_) {
@@ -57,4 +62,15 @@ MarkerTooltip.prototype.show = function() {
     this.div_.style.visibility = "visible";
     this.updatePosition();
   }
+};
+// this.mouseOver_ doesn't work, event handlers have the target element
+// (i.e. the DIV) as the "this" pointer.
+MarkerTooltip.prototype.onMouseOver_ = function() {
+  MarkerTooltip.mouseOver_ = true;
+};
+MarkerTooltip.prototype.onMouseOut_ = function() {
+  MarkerTooltip.mouseOver_ = false;
+};
+MarkerTooltip.prototype.isMouseOver = function() {
+  return MarkerTooltip.mouseOver_;
 };
