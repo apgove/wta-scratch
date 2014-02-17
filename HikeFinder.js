@@ -138,19 +138,29 @@ UI.applyUrlParameters = function() {
 
 /** Prevent the map from being panned out of bounds. */
 UI.addPanLimiter = function(map, allowedBounds) {
+  if (!allowedBounds) {
+    return;
+  }
   // ported from http://stackoverflow.com/questions/3125065/how-do-i-limit-panning-in-google-maps-api-v3
   var lastValidCenter = map.getCenter();
   
   google.maps.event.addListener(map, 'center_changed', function() {
-    if (allowedBounds.contains(map.getCenter())) {
+    var newCenter = map.getCenter();
+    if (allowedBounds.contains(newCenter)) {
       // still within valid bounds, so save the last valid position
-      lastValidCenter = map.getCenter();
+      lastValidCenter = newCenter;
       return; 
     }
-
-    // revisit old location.
-    // TODO: convert diagonal move to horizontal/vertical when only
-    // out of bounds in one dimension.
+    // Out of bounds.  Try horizontal or vertical slides instead.
+    var slide = new google.maps.LatLng(newCenter.lat(), lastValidCenter.lng());
+    if (allowedBounds.contains(slide)) {
+      lastValidCenter = slide;
+    } else {
+      slide = new google.maps.LatLng(lastValidCenter.lat(), newCenter.lng());
+      if (allowedBounds.contains(slide)) {
+	lastValidCenter = slide;
+      }
+    }
     map.panTo(lastValidCenter);
   });  
 };
