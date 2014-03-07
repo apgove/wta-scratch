@@ -339,7 +339,7 @@ Search.geocodeButtonHandler_ = function() {
     if (!Search.geocoder_) {
       Search.geocoder_ = new google.maps.Geocoder();
     }
-    // TODO: add bounds hint, maybe viewport hint
+    // TODO: maybe add viewport hint
     Search.geocoder_.geocode({
       address: query,
       bounds: Search.UI.ALLOWED_BOUNDS,
